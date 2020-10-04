@@ -10,7 +10,7 @@ import java.util.Properties;
 /**
  * The database connection manager for this app.
  * @author Lori White
- * @version v1 (09/14/2020)
+ * @version v1 (10/03/2020)
  */
 public class ConnectionManagerProperties {
 	
