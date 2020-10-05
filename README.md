@@ -11,5 +11,5 @@
 3. After successful login the app should divert into showing the list of products.
 4. User can request to return an item from a Invoice they have selected.
 5. The user can view all their Invoices.
-6. Item is checked for the 15 day period for retunrs if everything is fine user will get their amount back.
+6. Item is checked for the 15 day period for returns if everything is fine user will get their amount back.
 7. Use JDBC and DAO to connect user info to a database.
