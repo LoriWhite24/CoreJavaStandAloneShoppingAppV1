@@ -1,5 +1,6 @@
 package com.cognixia.jumplus.shoppingapp.utility;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -39,9 +40,6 @@ public class ConsolePrinterUtility {
 			break;
 		case "invoices":
 			header = "+---------------+\n| Your Invoices |\n+---------------+";
-			break;
-		case "invoice":
-			header = "+------------------+\n| Choose an Action |\n+------------------+";
 			break;
 		case "return":
 			header = "+----------------+\n| Making a Return |\n+----------------+";
@@ -93,7 +91,35 @@ public class ConsolePrinterUtility {
 		case "input":
 			error = "Invalid Input. Please try again!";
 			break;
+		case "return":
+			error = "Cannot make a Return.";
+			break;
+		case "out_of_stock":
+			error = "This item is Out of Stock.";
+			break;
 		}
 		ColorsUtility.colorError(error);
 	}
+	/**
+	 * Clears the console in command line.
+	 */
+    public static void clrscr(){
+
+        //Clears Screen in java
+
+        try {
+
+            if (System.getProperty("os.name").contains("Windows"))
+
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+
+            else
+
+                Runtime.getRuntime().exec("clear");
+
+        } catch (IOException | InterruptedException ex) {
+        	System.out.printf("something went wrong :(");
+        }
+
+    }
 }

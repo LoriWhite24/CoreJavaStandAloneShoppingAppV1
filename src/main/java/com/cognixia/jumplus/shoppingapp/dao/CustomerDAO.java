@@ -45,4 +45,9 @@ public interface CustomerDAO {
 	 * @return Customer - the added customer
 	 */
 	public Customer add(Customer customer);
+	/**
+	 * Retrieves the number of guest customers that have made a purchase.
+	 * @return Integer - the number of guest customers
+	 */
+	public Integer getNumberOfGuests();
 }

@@ -1,4 +1,4 @@
-package com.cognixia.jumplus.shoppingapp.controller;
+package com.cognixia.jumplus.shoppingapp.daoimpl;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,7 +14,7 @@ import com.cognixia.jumplus.shoppingapp.model.Address;
  * @author Lori White
  * @version v1 (10/04/2020)
  */
-public class AddressController implements AddressDAO {
+public class AddressDAOImpl implements AddressDAO {
 	private Connection conn = ConnectionManagerProperties.getConnection();
 	/**
 	 * Retrieves an address by id.

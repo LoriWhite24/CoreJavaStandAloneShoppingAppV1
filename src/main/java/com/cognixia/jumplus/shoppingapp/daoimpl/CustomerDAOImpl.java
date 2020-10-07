@@ -1,4 +1,4 @@
-package com.cognixia.jumplus.shoppingapp.controller;
+package com.cognixia.jumplus.shoppingapp.daoimpl;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,7 +14,7 @@ import com.cognixia.jumplus.shoppingapp.model.Customer;
  * @author Lori White
  * @version v1 (10/04/2020)
  */
-public class CustomerController implements CustomerDAO {
+public class CustomerDAOImpl implements CustomerDAO {
 	private Connection conn = ConnectionManagerProperties.getConnection();
 	/**
 	 * Retrieves a customer by id.
@@ -177,5 +177,32 @@ public class CustomerController implements CustomerDAO {
 	@Override
 	public boolean existsByEmail(String email) {
 		return getByEmail(email) != null;
+	}
+	/**
+	 * Retrieves the number of guest customers that have made a purchase.
+	 * @return Integer - the number of guest customers
+	 */
+	@Override
+	public Integer getNumberOfGuests() {
+		Integer numGuests = null;
+
+		try(PreparedStatement pstmt = conn.prepareStatement("select count(*) from shopping_app.customer where customer_id like '%guest%'")) {
+
+			ResultSet rs = pstmt.executeQuery();
+
+			if(rs.next()) {
+				
+				numGuests = rs.getInt(1);
+
+			}
+
+			pstmt.close();
+			
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+
+
+		return numGuests;
 	}
 }

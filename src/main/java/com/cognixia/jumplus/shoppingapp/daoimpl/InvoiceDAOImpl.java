@@ -1,4 +1,4 @@
-package com.cognixia.jumplus.shoppingapp.controller;
+package com.cognixia.jumplus.shoppingapp.daoimpl;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -17,7 +17,7 @@ import com.cognixia.jumplus.shoppingapp.model.Invoice;
  * @author Lori White
  * @version v1 (10/04/2020)
  */
-public class InvoiceController implements InvoiceDAO {
+public class InvoiceDAOImpl implements InvoiceDAO {
 	private Connection conn = ConnectionManagerProperties.getConnection();
 	/**
 	 * Retrieves an invoice by id.
