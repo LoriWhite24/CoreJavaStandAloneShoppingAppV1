@@ -5,6 +5,7 @@ import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,7 @@ import com.cognixia.jumplus.shoppingapp.model.InvoiceProduct;
 import com.cognixia.jumplus.shoppingapp.model.Product;
 import com.cognixia.jumplus.shoppingapp.utility.ColorsUtility;
 import com.cognixia.jumplus.shoppingapp.utility.ConsolePrinterUtility;
+import com.cognixia.jumplus.shoppingapp.utility.GuestGeneratorUtility;
 
 /**
  * The controller for the shopping app.
@@ -195,18 +197,121 @@ public class ShoppingAppController {
 		} else {
 			
 		}
+		
 	}
 	/**
 	 * Allows the customer to make a return.
 	 * @param loggedIn whether the user is logged in
 	 */
 	public void returnItem(boolean loggedIn) {
+		char again = 'n';
+		String check, email;
+		int id = 0, response = 0, amountRequestedReturn = 0;
+		boolean makingReturn = true, selectedProduct;
+		Product currentProduct, temp;
+		InvoiceProduct currentInvoiceProduct;
 		ConsolePrinterUtility.header("return");
-		if(loggedIn) {
-			
-		} else {
-			
+		if(!loggedIn) {
+			do {
+				ColorsUtility.colorDefault("Enter the Invoice ID you wish to make a return on: ");
+				id = Integer.parseInt(in.nextLine().trim());
+				ColorsUtility.colorDefault("Enter the email you used when making the purchase for this invoice: ");
+				email = in.nextLine().trim();
+				if( !invoiceRepo.existsById(id) && !customerRepo.existsById(email)) {
+					ConsolePrinterUtility.error("return");
+					do {
+						ColorsUtility.colorDefault("Do wish to try again? (Y/N)");
+						again = in.nextLine().trim().toLowerCase().charAt(0);
+						if(again != 'y' && again != 'n') {
+							ConsolePrinterUtility.error("input");
+						}
+					} while(again != 'y' && again != 'n');
+					makingReturn = false;
+				} else if (!invoiceRepo.getById(id).getCustomerId().equals(customerRepo.getByEmail(email).getCustomerId())) {
+					ConsolePrinterUtility.error("return");
+					do {
+						ColorsUtility.colorDefault("Do wish to try again? (Y/N)");
+						again = in.nextLine().trim().toLowerCase().charAt(0);
+						if(again != 'y' && again != 'n') {
+							ConsolePrinterUtility.error("input");
+						}
+					} while(again != 'y' && again != 'n');
+					makingReturn = false;
+				} else {
+					again = 'n';
+					makingReturn = true;
+					currentInvoice = invoiceRepo.getById(id);
+					currentCustomer = customerRepo.getByEmail(email);
+				}				
+			} while(again == 'y');
 		}
+		if(makingReturn) {
+			currentInvoiceProducts = invoiceProductRepo.getByInvoiceId(currentInvoice.getInvoiceId());
+			for(InvoiceProduct ip : currentInvoiceProducts) {
+				temp = productRepo.getById(ip.getProductId());
+				products.add(temp.getProductId() + "\t\t" + temp.getName() + "\t\t" + temp.getDescription() + "\t$" + df.format(temp.getPrice()) + "\tx" + ip.getQuantity());
+			}
+			products.add("Back");
+			do {
+				do {
+					ColorsUtility.colorHeader("   Product ID\tName\t\tDescription\t\tPrice\tQuantity");
+					ConsolePrinterUtility.menu(products);
+					ConsolePrinterUtility.menuChoice(products.size());
+					response = Integer.parseInt(in.nextLine().trim());
+					if(response < minChoice || response > products.size()) {
+						ConsolePrinterUtility.error("input");
+					}
+				} while(response < minChoice || response > products.size());
+				ConsolePrinterUtility.clrscr();
+				selectedProduct = true;
+				if(response == products.size()) {
+					products.removeAll(products);
+					selectedProduct = false;
+				} else {
+					do {
+						currentInvoiceProduct = currentInvoiceProducts.get(response - 1);
+						currentProduct = productRepo.getById(products.get(response - 1).split("\t")[0]);
+						ColorsUtility.colorHeader("Product ID\tName\t\tDescription\t\tPrice\tQuantity");
+						ColorsUtility.colorOutput(currentProduct.getProductId() + "\t\t" + currentProduct.getName() + "\t\t" + currentProduct.getDescription() + "\t$" + df.format(currentProduct.getPrice()) + "\tx" + currentInvoiceProduct.getQuantity());
+						do {
+							ColorsUtility.colorDefault("Do you want to request a return on this item? (Yes or No)");
+							check = in.nextLine().trim().toLowerCase().substring(0, 1);
+							if(!check.equals("y") && !check.equals("n")) {
+								ConsolePrinterUtility.error("input");
+							}
+						} while(!check.equals("y") && !check.equals("n"));
+	    				ConsolePrinterUtility.clrscr();
+	    				if(check.equals("y")) {
+	    					if(currentInvoiceProduct.getCanReturn()) {
+	    						if(currentInvoiceProduct.getRequestedReturn()) {
+	    							ColorsUtility.colorOutput("Currently waiting for a verification on a Return.");
+	    						} else {
+	    							do {
+	    								ColorsUtility.colorDefault("How many do you want to request to return on this item?");
+	    								amountRequestedReturn = Integer.parseInt(in.nextLine().trim());
+	    								if(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity()) {
+	    									ConsolePrinterUtility.error("input");
+	    								}
+	    							} while(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity());
+	    							currentInvoiceProduct.setCanReturn(false);
+	    							currentInvoiceProduct.setRequestedReturn(true);
+	    							currentInvoiceProduct.setAmountRequestedReturn(amountRequestedReturn);
+	    							invoiceProductRepo.update(currentInvoiceProduct, "can_return");
+	    							invoiceProductRepo.update(currentInvoiceProduct, "requested_return");
+	    							invoiceProductRepo.update(currentInvoiceProduct, "amount_requested_return");
+	    						}
+	    					} else {
+	    						ConsolePrinterUtility.error("return");
+	    					}
+	    				} else {
+	    					selectedProduct = false;
+	    					currentProduct = null;
+	    				}
+					}while(selectedProduct);
+				}
+			} while(selectedProduct);
+		}
+		resetCurrentInvoice();
 	}
 	/**
 	 * Displays the customer info.

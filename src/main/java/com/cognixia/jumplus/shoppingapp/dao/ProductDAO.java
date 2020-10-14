@@ -1,5 +1,7 @@
 package com.cognixia.jumplus.shoppingapp.dao;
 
+import java.util.List;
+
 import com.cognixia.jumplus.shoppingapp.model.Product;
 
 /**
@@ -26,4 +28,9 @@ public interface ProductDAO {
 	 * @return boolean - whether a product exists by a name
 	 */
 	public boolean existsByName(String name);
+	/**
+	 * Retrieves all products from the shopping database.
+	 * @return List -  a list of all products 
+	 */
+	public List<Product> getAll();
 }

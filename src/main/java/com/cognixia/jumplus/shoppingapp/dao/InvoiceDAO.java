@@ -17,6 +17,12 @@ public interface InvoiceDAO {
 	 */
 	public Invoice getById(Integer id);
 	/**
+	 * Finds whether an invoice exists by id. 
+	 * @param id the invoice id to search by
+	 * @return boolean - whether an invoice exists by id
+	 */
+	public boolean existsById(Integer id);
+	/**
 	 * Retrieves a list of invoices based on a customer's id.
 	 * @param customerId the customer id to search by
 	 * @return List - the list of invoices based on the customer's id

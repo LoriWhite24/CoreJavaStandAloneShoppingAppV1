@@ -4,9 +4,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.cognixia.jumplus.shoppingapp.config.ConnectionManagerProperties;
 import com.cognixia.jumplus.shoppingapp.dao.ProductDAO;
+import com.cognixia.jumplus.shoppingapp.model.Invoice;
 import com.cognixia.jumplus.shoppingapp.model.Product;
 
 /**
@@ -82,5 +85,31 @@ public class ProductDAOImpl implements ProductDAO {
 	@Override
 	public boolean existsByName(String name) {
 		return getByName(name) != null;
+	}
+	/**
+	 * Retrieves all products from the shopping database.
+	 * @return List -  a list of all products 
+	 */
+	@Override
+	public List<Product> getAll() {
+		List<Product> products = new ArrayList<Product>();
+
+		try(PreparedStatement pstmt = conn.prepareStatement("select * from shopping_app.product")) {
+
+			ResultSet rs = pstmt.executeQuery();
+
+			if(rs.next()) {
+				
+				products.add(new Product(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getInt(5), rs.getBoolean(6)));
+			}
+
+			pstmt.close();
+			
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+
+
+		return products;
 	}
 }
