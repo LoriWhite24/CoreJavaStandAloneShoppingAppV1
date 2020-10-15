@@ -44,6 +44,9 @@ public class ConsolePrinterUtility {
 		case "return":
 			header = "+----------------+\n| Making a Return |\n+----------------+";
 			break;
+		case "final_purchase":
+			header = "+----------------------------------+\n| Here is your Finalized Purchase! |\n+----------------------------------+";
+			break;			
 		}
 		ColorsUtility.colorHeader(header);
 	}

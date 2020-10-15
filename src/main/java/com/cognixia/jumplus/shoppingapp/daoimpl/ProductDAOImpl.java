@@ -9,7 +9,6 @@ import java.util.List;
 
 import com.cognixia.jumplus.shoppingapp.config.ConnectionManagerProperties;
 import com.cognixia.jumplus.shoppingapp.dao.ProductDAO;
-import com.cognixia.jumplus.shoppingapp.model.Invoice;
 import com.cognixia.jumplus.shoppingapp.model.Product;
 
 /**

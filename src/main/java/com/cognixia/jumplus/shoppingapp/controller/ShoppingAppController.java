@@ -5,7 +5,6 @@ import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,7 +61,8 @@ public class ShoppingAppController {
 		Pattern passPattern = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-+=()])(?=\\S+$).{8,}$"), emailPattern = Pattern.compile("^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"), phonePattern = Pattern.compile("^(\\+0?1\\s)?\\(?\\d{3}\\)?[\\s.-]\\d{3}[\\s.-]\\d{4}$"), streetPattern = Pattern.compile("\\d+\\s+([a-zA-Z]+|[a-zA-Z]+\\s[a-zA-Z]+)"), zipPattern = Pattern.compile("^[0-9]{5}(?:-[0-9]{4})?$"), statePattern = Pattern.compile("^[A-Z]{2}$");
         Matcher matcher;
         Address address;
-        
+        Customer guest = null;
+        boolean isGuestWithCurrentPurchase = false;
         do {
         	ColorsUtility.colorDefault("User Id: (must be at least 8 characters)");
         	username = in.nextLine().trim();
@@ -96,54 +96,68 @@ public class ShoppingAppController {
         	ColorsUtility.colorDefault("Email:");
         	email = in.nextLine().trim();
         	matcher = emailPattern.matcher(email);
-        	if(!matcher.matches() || customerRepo.existsByEmail(email)) {
+        	if(!matcher.matches()) {
         		ConsolePrinterUtility.error("input");
-        	} 			
+        	} else if(customerRepo.existsByEmail(email)) {
+        		guest = customerRepo.getByEmail(email);
+        		if(guest.getCustomerId().contains("guest")) {
+        			isGuestWithCurrentPurchase = true;
+        			break;
+        		} else {
+        			ConsolePrinterUtility.error("input");
+        		}
+        	}
         } while(!matcher.matches() || customerRepo.existsByEmail(email));
-        do {
-        	ColorsUtility.colorDefault("Phone Number:");
-        	phone = in.nextLine().trim();
-        	matcher = phonePattern.matcher(phone);
-        	if(!matcher.matches()) {
-        		ConsolePrinterUtility.error("input");
-        	} 			
-        } while(!matcher.matches());
-        do {
-        	ColorsUtility.colorDefault("Street Address:");
-        	street = in.nextLine().trim();
-        	matcher = streetPattern.matcher(street);
-        	if(!matcher.matches()) {
-        		ConsolePrinterUtility.error("input");
-        	} 			
-        } while(!matcher.matches());
-        do {
-        	ColorsUtility.colorDefault("City:");
-        	city = in.nextLine().trim();
-        	if(city.equals("")) {
-        		ConsolePrinterUtility.error("input");
-        	} 			
-        } while(city.equals(""));
-        do {
-        	ColorsUtility.colorDefault("State:");
-        	state = in.nextLine().trim();
-        	matcher = statePattern.matcher(state);
-        	if(!matcher.matches()) {
-        		ConsolePrinterUtility.error("input");
-        	} 			
-        } while(!matcher.matches());
-        do {
-        	ColorsUtility.colorDefault("Zipcode:");
-        	zip = in.nextLine().trim();
-        	matcher = zipPattern.matcher(zip);
-        	if(!matcher.matches()) {
-        		ConsolePrinterUtility.error("input");
-        	} 			
-        } while(!matcher.matches());
-        if(addressRepo.existsByStreetAndZipcode(street, zip)) {
-        	address = addressRepo.getByStreetAndZipcode(street, zip);
+        if(isGuestWithCurrentPurchase) {
+        	ColorsUtility.colorDefault("You are a current guest that was temporaly saved in the database and the rest of your inforamtion will be auto saved.");
+        	phone = guest.getPhoneNumber();
+        	address = addressRepo.getById(guest.getAddressid());
         } else {
-        	address = addressRepo.add(new Address(0, street, city, state, zip));
-        }
+        	do {
+            	ColorsUtility.colorDefault("Phone Number:");
+            	phone = in.nextLine().trim();
+            	matcher = phonePattern.matcher(phone);
+            	if(!matcher.matches()) {
+            		ConsolePrinterUtility.error("input");
+            	} 			
+            } while(!matcher.matches());
+            do {
+            	ColorsUtility.colorDefault("Street Address:");
+            	street = in.nextLine().trim();
+            	matcher = streetPattern.matcher(street);
+            	if(!matcher.matches()) {
+            		ConsolePrinterUtility.error("input");
+            	} 			
+            } while(!matcher.matches());
+            do {
+            	ColorsUtility.colorDefault("City:");
+            	city = in.nextLine().trim();
+            	if(city.equals("")) {
+            		ConsolePrinterUtility.error("input");
+            	} 			
+            } while(city.equals(""));
+            do {
+            	ColorsUtility.colorDefault("State:");
+            	state = in.nextLine().trim();
+            	matcher = statePattern.matcher(state);
+            	if(!matcher.matches()) {
+            		ConsolePrinterUtility.error("input");
+            	} 			
+            } while(!matcher.matches());
+            do {
+            	ColorsUtility.colorDefault("Zipcode:");
+            	zip = in.nextLine().trim();
+            	matcher = zipPattern.matcher(zip);
+            	if(!matcher.matches()) {
+            		ConsolePrinterUtility.error("input");
+            	} 			
+            } while(!matcher.matches());
+            if(addressRepo.existsByStreetAndZipcode(street, zip)) {
+            	address = addressRepo.getByStreetAndZipcode(street, zip);
+            } else {
+            	address = addressRepo.add(new Address(0, street, city, state, zip));
+            }
+        }       
 
         currentCustomer = customerRepo.add(new Customer(username, password, fname, lname, "null", email, phone, address.getAddressId()));		
 		
@@ -191,13 +205,134 @@ public class ShoppingAppController {
 	 * @param loggedIn whether the user is logged in
 	 */
 	public void buyItem(boolean loggedIn) {
+		String check, email, id, phone, street, city, state, zip;
+		int response = 0, amount = 0;
+		boolean selectedProduct;
+		Pattern emailPattern = Pattern.compile("^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"), phonePattern = Pattern.compile("^(\\+0?1\\s)?\\(?\\d{3}\\)?[\\s.-]\\d{3}[\\s.-]\\d{4}$"), streetPattern = Pattern.compile("\\d+\\s+([a-zA-Z]+|[a-zA-Z]+\\s[a-zA-Z]+)"), zipPattern = Pattern.compile("^[0-9]{5}(?:-[0-9]{4})?$"), statePattern = Pattern.compile("^[A-Z]{2}$");
+        Matcher matcher;
+		Address address;
+		Customer guest;
+		Product currentProduct;
+		Invoice invoice = null;
+		List<InvoiceProduct> invoiceProducts = new ArrayList<InvoiceProduct>();
 		ConsolePrinterUtility.header("purchase");
-		if(loggedIn) {
-			
-		} else {
-			
+		List<Product> allProducts = productRepo.getAll();
+		for(Product p : allProducts) {
+			products.add(p.getProductId() + "\t\t" + p.getName() + "\t\t" + p.getDescription() + "\t$" + df.format(p.getPrice()) + "\t" + (p.getInStock()? "In Stock\tNumber of Items in Stock: " + p.getStock() : "Out of Stock"));
 		}
-		
+		products.add("Back");
+		do {
+			do {
+				ColorsUtility.colorHeader("   Product ID\tName\t\tDescription\t\tPrice\tAvailability");
+				ConsolePrinterUtility.menu(products);
+				ConsolePrinterUtility.menuChoice(products.size());
+				response = Integer.parseInt(in.nextLine().trim());
+				if(response < minChoice || response > products.size()) {
+					ConsolePrinterUtility.error("input");
+				}
+			} while(response < minChoice || response > products.size());
+			ConsolePrinterUtility.clrscr();
+			selectedProduct = true;
+			if(response == products.size()) {
+				products.removeAll(products);
+				selectedProduct = false;
+			} else {
+				currentProduct = productRepo.getByName(products.get(response - 1).split("\t")[0]);
+				do {
+					ColorsUtility.colorDefault("How many do you wish to purchase of this item?");
+					amount = Integer.parseInt(in.nextLine().trim());
+					if(amount < 0 || amount > currentProduct.getStock()) {
+						ConsolePrinterUtility.error("input");
+					}
+				} while(amount < 0 || amount > currentProduct.getStock());
+				invoiceProducts.add(new InvoiceProduct(null, null, currentProduct.getProductId(), amount, null, null, null));
+				do {
+					ColorsUtility.colorDefault("Do you want to finalize your purchase? (Yes or No)");
+					check = in.nextLine().trim().toLowerCase().substring(0, 1);
+					if(!check.equals("y") && !check.equals("n")) {
+						ConsolePrinterUtility.error("input");
+					}
+				} while(!check.equals("y") && !check.equals("n"));
+				ConsolePrinterUtility.clrscr();
+				if(check.equals("y")) {
+					if(loggedIn) {
+						invoice = invoiceRepo.add(new Invoice(null, currentCustomer.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
+						for(InvoiceProduct ip : invoiceProducts) {
+							ip.setInvoiceId(invoice.getInvoiceId());
+							invoiceProductRepo.add(ip);
+						}
+						invoiceRepo.updateSubTotal(invoice);
+					} else {
+						ColorsUtility.colorDefault("Checking out as an Guest:\n*Enter needed Information*");
+						do {
+				        	ColorsUtility.colorDefault("Email:");
+				        	email = in.nextLine().trim();
+				        	matcher = emailPattern.matcher(email);
+				        	if(!matcher.matches() || customerRepo.existsByEmail(email)) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(!matcher.matches() || customerRepo.existsByEmail(email));
+				        do {
+				        	ColorsUtility.colorDefault("Phone Number:");
+				        	phone = in.nextLine().trim();
+				        	matcher = phonePattern.matcher(phone);
+				        	if(!matcher.matches()) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(!matcher.matches());
+				        do {
+				        	ColorsUtility.colorDefault("Street Address:");
+				        	street = in.nextLine().trim();
+				        	matcher = streetPattern.matcher(street);
+				        	if(!matcher.matches()) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(!matcher.matches());
+				        do {
+				        	ColorsUtility.colorDefault("City:");
+				        	city = in.nextLine().trim();
+				        	if(city.equals("")) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(city.equals(""));
+				        do {
+				        	ColorsUtility.colorDefault("State:");
+				        	state = in.nextLine().trim();
+				        	matcher = statePattern.matcher(state);
+				        	if(!matcher.matches()) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(!matcher.matches());
+				        do {
+				        	ColorsUtility.colorDefault("Zipcode:");
+				        	zip = in.nextLine().trim();
+				        	matcher = zipPattern.matcher(zip);
+				        	if(!matcher.matches()) {
+				        		ConsolePrinterUtility.error("input");
+				        	} 			
+				        } while(!matcher.matches());
+				        if(addressRepo.existsByStreetAndZipcode(street, zip)) {
+				        	address = addressRepo.getByStreetAndZipcode(street, zip);
+				        } else {
+				        	address = addressRepo.add(new Address(0, street, city, state, zip));
+				        }
+						id = GuestGeneratorUtility.generateNewAccountNumber();
+						guest = customerRepo.add(new Customer(id, "guest1234", "Guest", "Customer", null, email, phone, address.getAddressId()));
+						invoice = invoiceRepo.add(new Invoice(null, guest.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
+						for(InvoiceProduct ip : invoiceProducts) {
+							ip.setInvoiceId(invoice.getInvoiceId());
+							invoiceProductRepo.add(ip);
+						}
+						invoiceRepo.updateSubTotal(invoice);
+					}
+					ConsolePrinterUtility.clrscr();
+					ConsolePrinterUtility.header("final_purchase");
+					displayInvoice(invoice.getInvoiceId());
+					products.removeAll(products);
+					selectedProduct = false;
+				} 
+			}
+		} while(selectedProduct);
 	}
 	/**
 	 * Allows the customer to make a return.
