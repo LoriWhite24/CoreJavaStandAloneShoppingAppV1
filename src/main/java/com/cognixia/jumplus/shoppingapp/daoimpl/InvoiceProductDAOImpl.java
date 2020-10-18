@@ -63,7 +63,7 @@ public class InvoiceProductDAOImpl implements InvoiceProductDAO {
 
 			ResultSet rs = pstmt.executeQuery();
 
-			if(rs.next()) {
+			while(rs.next()) {
 				
 				invoiceProduct.add(new InvoiceProduct(rs.getInt(1), rs.getInt(2), rs.getString(3), rs.getInt(4), rs.getBoolean(5), rs.getBoolean(6), rs.getInt(7)));
 			}
@@ -84,28 +84,37 @@ public class InvoiceProductDAOImpl implements InvoiceProductDAO {
 	 */
 	@Override
 	public InvoiceProduct add(InvoiceProduct invoiceProduct) {
-		if(getById(invoiceProduct.getInvoiceProductId()) == null) {
-			try {
-				PreparedStatement pstmt = conn.prepareStatement("insert into shopping_app.invoice_product (`invoice_product_id`, `invoice_id`, `product_id`, `quantity`) values(?,?,?,?)");
+		try {
+			PreparedStatement pstmt = conn.prepareStatement("insert into shopping_app.invoice_product (`invoice_product_id`, `invoice_id`, `product_id`, `quantity`) values(?,?,?,?)");
 
-				pstmt.setInt(1, invoiceProduct.getInvoiceProductId());
-				pstmt.setInt(2, invoiceProduct.getInvoiceId());
-				pstmt.setString(3, invoiceProduct.getProductId());
-				pstmt.setInt(4, invoiceProduct.getQuantity());
+			pstmt.setInt(1, invoiceProduct.getInvoiceProductId());
+			pstmt.setInt(2, invoiceProduct.getInvoiceId());
+			pstmt.setString(3, invoiceProduct.getProductId());
+			pstmt.setInt(4, invoiceProduct.getQuantity());
 
-				int insert = pstmt.executeUpdate();
+			int insert = pstmt.executeUpdate();
 
-				if(insert > 0) {
-					return getById(invoiceProduct.getInvoiceProductId());
+			if(insert > 0) {
+				try(PreparedStatement stmt = conn.prepareStatement("select * from shopping_app.invoice_product where invoice_id = ? and product_id = ? and quantity = ?")) {
+					stmt.setInt(1, invoiceProduct.getInvoiceId());
+					stmt.setString(2, invoiceProduct.getProductId());
+					stmt.setInt(3, invoiceProduct.getQuantity());
+					ResultSet rs = stmt.executeQuery();
+					if(rs.next()) {
+						return new InvoiceProduct(rs.getInt(1), rs.getInt(2), rs.getString(3), rs.getInt(4), rs.getBoolean(5), rs.getBoolean(6), rs.getInt(7));
+					}
+					stmt.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
 				}
-
-
-				pstmt.close();
-
-			} catch (SQLException e) {
-
-				e.printStackTrace();
 			}
+
+
+			pstmt.close();
+
+		} catch (SQLException e) {
+
+			e.printStackTrace();
 		}
 		
 		return null;
@@ -157,9 +166,13 @@ public class InvoiceProductDAOImpl implements InvoiceProductDAO {
 	public boolean requestedReturnValidated(InvoiceProduct invoiceProduct) {
 		boolean updated = false;
 		try(CallableStatement cstmt = conn.prepareCall("{call ok_return(?)}")) {
-		   cstmt.setInt(1, invoiceProduct.getInvoiceProductId());
-		   updated = cstmt.execute();
-		   cstmt.close();
+			PreparedStatement stmt = conn.prepareStatement("use shopping_app");
+			cstmt.setInt(1, invoiceProduct.getInvoiceProductId());
+			stmt.execute();
+			cstmt.execute();
+			updated = true;
+			stmt.close();
+			cstmt.close();
 		}
 		catch (SQLException e) {
 			e.printStackTrace();

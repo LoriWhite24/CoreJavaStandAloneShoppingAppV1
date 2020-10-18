@@ -50,7 +50,7 @@ public class AddressDAOImpl implements AddressDAO {
 	public Address getByStreetAndZipcode(String street, String zipcode) {
 		Address address = null;
 
-		try(PreparedStatement pstmt = conn.prepareStatement("select * from dollars_bank.address where street = ? and zip_code = ?")) {
+		try(PreparedStatement pstmt = conn.prepareStatement("select * from shopping_app.address where street = ? and zip_code = ?")) {
 
 			pstmt.setString(1, street);
 			pstmt.setString(2, zipcode);
@@ -85,7 +85,7 @@ public class AddressDAOImpl implements AddressDAO {
 	public Address add(Address address) {
 		if(!existsByStreetAndZipcode(address.getStreet(), address.getZipcode())) {
 			try {
-				PreparedStatement pstmt = conn.prepareStatement("insert into dollars_bank.address values(?,?,?,?,?)");
+				PreparedStatement pstmt = conn.prepareStatement("insert into shopping_app.address values(?,?,?,?,?)");
 
 				pstmt.setInt(1, address.getAddressId());
 				pstmt.setString(2, address.getStreet());

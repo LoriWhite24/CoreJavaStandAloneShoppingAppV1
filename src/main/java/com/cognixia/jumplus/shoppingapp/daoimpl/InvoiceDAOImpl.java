@@ -93,30 +93,43 @@ public class InvoiceDAOImpl implements InvoiceDAO {
 	 */
 	@Override
 	public Invoice add(Invoice invoice) {
-		if(getById(invoice.getInvoiceId()) == null) {
-			try {
-				PreparedStatement pstmt = conn.prepareStatement("insert into shopping_app.invoice (`invoice_id`, `customer_id`, `order_date`) values(?,?,?)");
-				CallableStatement cstmt = conn.prepareCall("{call set_tax_rate(?)}");
-						
-				pstmt.setInt(1, invoice.getInvoiceId());
-				pstmt.setString(2, invoice.getCustomerId());
-				pstmt.setTimestamp(3, invoice.getOrderDate());
-				cstmt.setString(1, invoice.getCustomerId());
+		try {
+			PreparedStatement pstmt = conn.prepareStatement("insert into shopping_app.invoice (`invoice_id`, `customer_id`, `order_date`) values(?,?,?)");
+			PreparedStatement stmt = conn.prepareStatement("use shopping_app");
+			CallableStatement cstmt = conn.prepareCall("{call set_tax_rate(?)}");
 
-				int insert = pstmt.executeUpdate();
-				boolean updated = cstmt.execute();
+			pstmt.setInt(1, invoice.getInvoiceId());
+			pstmt.setString(2, invoice.getCustomerId());
+			pstmt.setTimestamp(3, invoice.getOrderDate());
+			cstmt.setString(1, invoice.getCustomerId());
 
-				if(insert > 0 && updated) {
-					return getById(invoice.getInvoiceId());
+			int insert = pstmt.executeUpdate();
+			stmt.execute();
+			cstmt.execute();
+
+			if(insert > 0) {
+				try(PreparedStatement stm = conn.prepareStatement("select * from shopping_app.invoice where customer_id = ? and order_date = ?")) {
+					stm.setString(1, invoice.getCustomerId());
+					Long date = Math.round(Double.parseDouble(invoice.getOrderDate().toString().substring(18)));
+					stm.setString(2, invoice.getOrderDate().toString().substring(0,18) + date.toString());
+					ResultSet rs = stm.executeQuery();
+					System.out.println("before if" + invoice.getOrderDate().toString());
+					if(rs.next()) {
+						System.out.println("enter if");
+						return new Invoice(rs.getInt(1), rs.getString(2), rs.getTimestamp(3), rs.getDouble(4), rs.getDouble(5), rs.getDouble(6), rs.getDouble(7));
+					}
+					stmt.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
 				}
-				
-				cstmt.close();
-				pstmt.close();
-
-			} catch (SQLException e) {
-
-				e.printStackTrace();
 			}
+			stmt.close();
+			cstmt.close();
+			pstmt.close();
+
+		} catch (SQLException e) {
+
+			e.printStackTrace();
 		}
 		
 		return null;
@@ -130,8 +143,12 @@ public class InvoiceDAOImpl implements InvoiceDAO {
 	public boolean updateSubTotal(Invoice invoice) {
 		boolean updated = false;
 		try(CallableStatement cstmt = conn.prepareCall("{call set_sub_total(?)}")) {
+			PreparedStatement stmt = conn.prepareStatement("use shopping_app");
 		   cstmt.setInt(1, invoice.getInvoiceId());
-		   updated = cstmt.execute();
+		   stmt.execute();
+		   cstmt.execute();
+		   updated = true;
+		   stmt.close();
 		   cstmt.close();
 		}
 		catch (SQLException e) {

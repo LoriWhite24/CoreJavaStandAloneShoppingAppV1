@@ -91,15 +91,15 @@ public class ProductDAOImpl implements ProductDAO {
 	 */
 	@Override
 	public List<Product> getAll() {
-		List<Product> products = new ArrayList<Product>();
+		List<Product> allProducts = new ArrayList<Product>();
 
 		try(PreparedStatement pstmt = conn.prepareStatement("select * from shopping_app.product")) {
 
 			ResultSet rs = pstmt.executeQuery();
 
-			if(rs.next()) {
+			while(rs.next()) {
 				
-				products.add(new Product(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getInt(5), rs.getBoolean(6)));
+				allProducts.add(new Product(rs.getString(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getInt(5), rs.getBoolean(6)));
 			}
 
 			pstmt.close();
@@ -109,6 +109,6 @@ public class ProductDAOImpl implements ProductDAO {
 		}
 
 
-		return products;
+		return allProducts;
 	}
 }

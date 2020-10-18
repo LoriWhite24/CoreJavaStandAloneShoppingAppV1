@@ -213,7 +213,7 @@ public class ShoppingAppController {
 		Address address;
 		Customer guest;
 		Product currentProduct;
-		Invoice invoice = null;
+		Invoice invoice;
 		List<InvoiceProduct> invoiceProducts = new ArrayList<InvoiceProduct>();
 		ConsolePrinterUtility.header("purchase");
 		List<Product> allProducts = productRepo.getAll();
@@ -237,7 +237,7 @@ public class ShoppingAppController {
 				products.removeAll(products);
 				selectedProduct = false;
 			} else {
-				currentProduct = productRepo.getByName(products.get(response - 1).split("\t")[0]);
+				currentProduct = productRepo.getById(products.get(response - 1).split("\t")[0]);
 				do {
 					ColorsUtility.colorDefault("How many do you wish to purchase of this item?");
 					amount = Integer.parseInt(in.nextLine().trim());
@@ -245,7 +245,7 @@ public class ShoppingAppController {
 						ConsolePrinterUtility.error("input");
 					}
 				} while(amount < 0 || amount > currentProduct.getStock());
-				invoiceProducts.add(new InvoiceProduct(null, null, currentProduct.getProductId(), amount, null, null, null));
+				invoiceProducts.add(new InvoiceProduct(0, null, currentProduct.getProductId(), amount, null, null, null));
 				do {
 					ColorsUtility.colorDefault("Do you want to finalize your purchase? (Yes or No)");
 					check = in.nextLine().trim().toLowerCase().substring(0, 1);
@@ -256,7 +256,7 @@ public class ShoppingAppController {
 				ConsolePrinterUtility.clrscr();
 				if(check.equals("y")) {
 					if(loggedIn) {
-						invoice = invoiceRepo.add(new Invoice(null, currentCustomer.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
+						invoice = invoiceRepo.add(new Invoice(-1, currentCustomer.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
 						for(InvoiceProduct ip : invoiceProducts) {
 							ip.setInvoiceId(invoice.getInvoiceId());
 							invoiceProductRepo.add(ip);
@@ -317,8 +317,9 @@ public class ShoppingAppController {
 				        	address = addressRepo.add(new Address(0, street, city, state, zip));
 				        }
 						id = GuestGeneratorUtility.generateNewAccountNumber();
-						guest = customerRepo.add(new Customer(id, "guest1234", "Guest", "Customer", null, email, phone, address.getAddressId()));
-						invoice = invoiceRepo.add(new Invoice(null, guest.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
+						currentCustomer = customerRepo.add(new Customer(id, "guest1234", "Guest", "Customer", null, email, phone, address.getAddressId()));
+						invoice = invoiceRepo.add(new Invoice(0, currentCustomer.getCustomerId(), Timestamp.valueOf(LocalDateTime.now()), null, null, null, null));
+						System.out.println(invoice);
 						for(InvoiceProduct ip : invoiceProducts) {
 							ip.setInvoiceId(invoice.getInvoiceId());
 							invoiceProductRepo.add(ip);
@@ -328,6 +329,7 @@ public class ShoppingAppController {
 					ConsolePrinterUtility.clrscr();
 					ConsolePrinterUtility.header("final_purchase");
 					displayInvoice(invoice.getInvoiceId());
+					currentCustomer = null;
 					products.removeAll(products);
 					selectedProduct = false;
 				} 
@@ -384,12 +386,12 @@ public class ShoppingAppController {
 			currentInvoiceProducts = invoiceProductRepo.getByInvoiceId(currentInvoice.getInvoiceId());
 			for(InvoiceProduct ip : currentInvoiceProducts) {
 				temp = productRepo.getById(ip.getProductId());
-				products.add(temp.getProductId() + "\t\t" + temp.getName() + "\t\t" + temp.getDescription() + "\t$" + df.format(temp.getPrice()) + "\tx" + ip.getQuantity());
+				products.add(temp.getProductId() + "\t\t" + temp.getName() + "\t\t" + temp.getDescription() + "\t$" + df.format(temp.getPrice()) + "\tx" + ip.getQuantity() + "\t" + (ip.getRequestedReturn()? "Yes" : "No"));
 			}
 			products.add("Back");
 			do {
 				do {
-					ColorsUtility.colorHeader("   Product ID\tName\t\tDescription\t\tPrice\tQuantity");
+					ColorsUtility.colorHeader("   Product ID\tName\t\tDescription\t\tPrice\tQuantity\tRequested Return");
 					ConsolePrinterUtility.menu(products);
 					ConsolePrinterUtility.menuChoice(products.size());
 					response = Integer.parseInt(in.nextLine().trim());
@@ -403,46 +405,42 @@ public class ShoppingAppController {
 					products.removeAll(products);
 					selectedProduct = false;
 				} else {
+					currentInvoiceProduct = currentInvoiceProducts.get(response - 1);
+					currentProduct = productRepo.getById(products.get(response - 1).split("\t")[0]);
+					ColorsUtility.colorHeader("Product ID\tName\t\tDescription\t\tPrice\tQuantity\tRequested Return");
+					ColorsUtility.colorOutput(currentProduct.getProductId() + "\t\t" + currentProduct.getName() + "\t\t" + currentProduct.getDescription() + "\t$" + df.format(currentProduct.getPrice()) + "\tx" + currentInvoiceProduct.getQuantity() + "\t" + (currentInvoiceProduct.getRequestedReturn()? "Yes" : "No"));
 					do {
-						currentInvoiceProduct = currentInvoiceProducts.get(response - 1);
-						currentProduct = productRepo.getById(products.get(response - 1).split("\t")[0]);
-						ColorsUtility.colorHeader("Product ID\tName\t\tDescription\t\tPrice\tQuantity");
-						ColorsUtility.colorOutput(currentProduct.getProductId() + "\t\t" + currentProduct.getName() + "\t\t" + currentProduct.getDescription() + "\t$" + df.format(currentProduct.getPrice()) + "\tx" + currentInvoiceProduct.getQuantity());
-						do {
-							ColorsUtility.colorDefault("Do you want to request a return on this item? (Yes or No)");
-							check = in.nextLine().trim().toLowerCase().substring(0, 1);
-							if(!check.equals("y") && !check.equals("n")) {
-								ConsolePrinterUtility.error("input");
+						ColorsUtility.colorDefault("Do you want to request a return on this item? (Yes or No)");
+						check = in.nextLine().trim().toLowerCase().substring(0, 1);
+						if(!check.equals("y") && !check.equals("n")) {
+							ConsolePrinterUtility.error("input");
+						}
+					} while(!check.equals("y") && !check.equals("n"));
+					ConsolePrinterUtility.clrscr();
+					if(check.equals("y")) {
+						if(currentInvoiceProduct.getRequestedReturn()) {
+							if(currentInvoiceProduct.getCanReturn()) {
+								ConsolePrinterUtility.error("return");
+							} else {
+								do {
+									ColorsUtility.colorDefault("How many do you want to request to return on this item?");
+									amountRequestedReturn = Integer.parseInt(in.nextLine().trim());
+									if(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity()) {
+										ConsolePrinterUtility.error("input");
+									}
+								} while(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity());
+								currentInvoiceProduct.setCanReturn(false);
+								currentInvoiceProduct.setRequestedReturn(true);
+								currentInvoiceProduct.setAmountRequestedReturn(amountRequestedReturn);
+								invoiceProductRepo.update(currentInvoiceProduct, "can_return");
+								invoiceProductRepo.update(currentInvoiceProduct, "requested_return");
+								invoiceProductRepo.update(currentInvoiceProduct, "amount_requested_return");
 							}
-						} while(!check.equals("y") && !check.equals("n"));
-	    				ConsolePrinterUtility.clrscr();
-	    				if(check.equals("y")) {
-	    					if(currentInvoiceProduct.getCanReturn()) {
-	    						if(currentInvoiceProduct.getRequestedReturn()) {
-	    							ColorsUtility.colorOutput("Currently waiting for a verification on a Return.");
-	    						} else {
-	    							do {
-	    								ColorsUtility.colorDefault("How many do you want to request to return on this item?");
-	    								amountRequestedReturn = Integer.parseInt(in.nextLine().trim());
-	    								if(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity()) {
-	    									ConsolePrinterUtility.error("input");
-	    								}
-	    							} while(amountRequestedReturn < 0 || amountRequestedReturn > currentInvoiceProduct.getQuantity());
-	    							currentInvoiceProduct.setCanReturn(false);
-	    							currentInvoiceProduct.setRequestedReturn(true);
-	    							currentInvoiceProduct.setAmountRequestedReturn(amountRequestedReturn);
-	    							invoiceProductRepo.update(currentInvoiceProduct, "can_return");
-	    							invoiceProductRepo.update(currentInvoiceProduct, "requested_return");
-	    							invoiceProductRepo.update(currentInvoiceProduct, "amount_requested_return");
-	    						}
-	    					} else {
-	    						ConsolePrinterUtility.error("return");
-	    					}
-	    				} else {
-	    					selectedProduct = false;
-	    					currentProduct = null;
-	    				}
-					}while(selectedProduct);
+						} else {
+							ColorsUtility.colorOutput("Currently waiting for a verification on a Return.");
+						}
+					} 
+					currentProduct = null;
 				}
 			} while(selectedProduct);
 		}
